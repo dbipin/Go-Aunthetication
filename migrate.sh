@@ -11,6 +11,10 @@ case $1 in
     docker run --rm -v $(pwd)/migrations:/migrations \
       migrate/migrate:v4.17.0 \
       create -ext sql -dir /migrations -seq $2
+    
+    # FIX OWNERSHIP - Change from root to current user
+    sudo chown -R $USER:$USER migrations/
+    
     echo "Created migration: $2"
     echo "Edit files in migrations/ folder"
     ;;

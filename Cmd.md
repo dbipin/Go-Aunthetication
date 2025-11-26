@@ -1,1 +1,0 @@
-docker exec -it apiserver-db psql -U postgres -d apiserver -c "UPDATE schema_migrations SET version = 3, dirty = false;"

@@ -11,13 +11,21 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// Update UserHandler to have roleService
+
 type UserHandler struct {
-	service *service.UserService
+	service     *service.UserService
+	rbacService *service.RBACService
+	roleService *service.RoleService
 }
 
 // NewUserHandler creates a new user handler
-func NewUserHandler(service *service.UserService) *UserHandler {
-	return &UserHandler{service: service}
+func NewUserHandler(service *service.UserService, rbacService *service.RBACService, roleService *service.RoleService) *UserHandler {
+	return &UserHandler{
+		service:     service,
+		rbacService: rbacService,
+		roleService: roleService,
+	}
 }
 
 // Register handles user registration
@@ -35,6 +43,15 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// AUTO-ASSIGN "user" ROLE BY NAME (BETTER!)
+	userRole, err := h.roleService.GetRoleByName("user")
+	if err == nil && userRole != nil {
+		_ = h.rbacService.AssignRoleToUser(&models.AssignRoleRequest{
+			UserID: user.ID,
+			RoleID: userRole.ID,
+		})
+	}
+
 	// Generate JWT token
 	token, err := utils.GenerateToken(user.ID)
 	if err != nil {
@@ -42,15 +59,24 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get user roles
+	roles, err := h.rbacService.GetUserRoles(user.ID)
+	if err != nil {
+		roles = []models.Role{}
+	}
+
 	response := models.LoginResponse{
 		Token: token,
 		User:  *user,
+		Roles: roles,
 	}
 
 	utils.SuccessResponse(w, http.StatusCreated, response)
 }
 
 // Login handles user login
+// internal/handlers/user_handler.go
+
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req models.LoginRequest
 
@@ -72,9 +98,16 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// GET USER ROLES (ADD THIS)
+	roles, err := h.rbacService.GetUserRoles(user.ID)
+	if err != nil {
+		roles = []models.Role{} // Empty if error
+	}
+
 	response := models.LoginResponse{
 		Token: token,
 		User:  *user,
+		Roles: roles, // ADD THIS
 	}
 
 	utils.SuccessResponse(w, http.StatusOK, response)

@@ -28,6 +28,7 @@ type LoginRequest struct {
 type LoginResponse struct {
 	Token string `json:"token"`
 	User  User   `json:"user"`
+	Roles []Role `json:"roles"`
 }
 
 // UpdateUserRequest - Request body for updating user
